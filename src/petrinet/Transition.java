@@ -1,6 +1,7 @@
 package petrinet;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 
 public class Transition<T> {
@@ -10,32 +11,70 @@ public class Transition<T> {
   private Map<T, Integer> outputs;
 
   public Transition(Map<T, Integer> inputs, Collection<T> resets, Collection<T> inhibitors, Map<T, Integer> outputs) {
-    this.inputs = inputs;
-    this.resets = resets;
+    this.inputs = inputs; //TODO: validate
+    this.resets = resets; //TODO: can inputs and resets have intersection?
     this.inhibitor = inhibitors;
     this.outputs = outputs;
   }
 
-  public boolean isEnabled(Map<T, Integer> places) throws InvalidInputException {
+  public boolean isEnabled(Map<T, Integer> marking) {
     for(Map.Entry<T, Integer> arc : inputs.entrySet()) {
-      Integer tokens = places.get(arc.getKey());
+      Integer tokens = marking.get(arc.getKey());
 
       if(tokens == null) {
-        throw new InvalidInputException("no place " + arc.getKey().toString());
+        return false;
       }
-      if(tokens >= arc.getValue()) {
+      else if(tokens < arc.getValue()) {
         return false;
       }
     }
 
-    for(T place : inhibitor) {
-      Integer tokens = places.get(place);
+    return validateInhibitors(marking);
+  }
+
+  public Map<T, Integer> fire(Map<T, Integer> marking) throws TransitionNotEnabledException {
+    if(!validateInhibitors(marking)) {
+      throw new TransitionNotEnabledException(this.toString());
+    }
+
+    Map<T, Integer> newMarking = new HashMap<>(marking);
+    for(Map.Entry<T, Integer> arc : inputs.entrySet()) {
+      Integer tokens = newMarking.get(arc.getKey());
 
       if(tokens == null) {
-        throw new InvalidInputException("no place " + place.toString());
+        throw new TransitionNotEnabledException(this.toString());
       }
-      if(tokens != 0) {
-        return  false;
+
+      int newTokens = tokens - arc.getValue();
+      if(newTokens < 0) {
+        throw new TransitionNotEnabledException(this.toString());
+      }
+
+      if(newTokens == 0) {
+        newMarking.remove(arc.getKey());
+      }
+      else {
+        newMarking.put(arc.getKey(), newTokens);
+      }
+    }
+
+    for(T place : resets) {
+      newMarking.remove(place);
+    }
+
+    for(Map.Entry<T, Integer> arc : outputs.entrySet()) {
+      int tokens = newMarking.getOrDefault(arc.getKey(), 0);
+      tokens += arc.getValue();
+      newMarking.put(arc.getKey(), tokens);
+    }
+
+    return newMarking;
+  }
+
+  private boolean validateInhibitors(Map<T, Integer> marking) {
+    for(T place : inhibitor) {
+      if(marking.containsKey(place)) {
+        return false;
       }
     }
 
