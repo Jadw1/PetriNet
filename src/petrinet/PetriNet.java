@@ -1,14 +1,17 @@
 package petrinet;
 
 import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class PetriNet<T> {
-  private boolean fair;
   private Map<T, Integer> places;
 
+  private final ReentrantLock lock;
+
   public PetriNet(Map<T, Integer> initial, boolean fair) {
-    this.fair = fair;
     this.places = initial; //TODO: deep copy?
+
+    this.lock = new ReentrantLock(fair);
   }
 
   public Set<Map<T, Integer>> reachable(Collection<Transition<T>> transitions) {
@@ -35,5 +38,32 @@ public class PetriNet<T> {
     }
 
     return set;
+  }
+
+  public Transition<T> fire(Collection<Transition<T>> transitions) throws InterruptedException {
+    Transition<T> result = null;
+    while(result == null) {
+      lock.lock();
+      result = tryFire(transitions);
+      lock.unlock();
+    }
+
+    return result;
+  }
+
+  private Transition<T> tryFire(Collection<Transition<T>> transitions) {
+    for(Transition<T> transition : transitions) {
+      if(transition.isEnabled(places)) {
+        try {
+          transition.fire(places);
+          return transition;
+        }
+        catch (TransitionNotEnabledException e) {
+          return null;
+        }
+      }
+    }
+
+    return null;
   }
 }

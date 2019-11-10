@@ -2,11 +2,52 @@ import petrinet.PetriNet;
 import petrinet.Transition;
 
 import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Main {
+    private static ReentrantLock lock = new ReentrantLock();
 
-    public static void main(String[] args) {
-        Map<String, Integer> places = new HashMap<>();
+    private static class Test implements Runnable {
+        String s;
+        public Test(String s) {
+            this.s = s;
+        }
+
+        @Override
+        public void run() {
+            System.out.println("before lock: " + s);
+            lock.lock();
+            if(s == "1") {
+                try {
+                    Thread.sleep(1000);
+                }
+                catch (Exception e) {
+
+                }
+
+            }
+            System.out.println("after lock: " + s);
+            lock.unlock();
+            System.out.println("after unlock: " + s);
+        }
+    }
+
+
+
+    public static void main(String[] args) throws InterruptedException {
+
+        Thread t1 = new Thread(new Test("1"));
+        Thread t2 = new Thread(new Test("2"));
+
+        lock.lock();
+        t1.start();
+        t2.start();
+        Thread.sleep(2000);
+        lock.unlock();
+
+
+
+        /*Map<String, Integer> places = new HashMap<>();
         places.put("a", 1);
         PetriNet<String> net = new PetriNet<>(places, false);
 
@@ -29,6 +70,6 @@ public class Main {
         output2.put("a", 1);
         transitions.add(new Transition<>(input2, reset2, inhibitors2, output2));
 
-        Set<Map<String, Integer>> res = net.reachable(transitions);
+        Set<Map<String, Integer>> res = net.reachable(transitions);*/
     }
 }
