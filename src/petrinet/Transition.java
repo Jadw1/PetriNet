@@ -32,9 +32,9 @@ public class Transition<T> {
     return validateInhibitors(marking);
   }
 
-  public Map<T, Integer> fire(Map<T, Integer> marking) throws TransitionNotEnabledException {
+  public Map<T, Integer> fire(Map<T, Integer> marking) {
     if(!validateInhibitors(marking)) {
-      throw new TransitionNotEnabledException(this.toString());
+      return null;
     }
 
     Map<T, Integer> newMarking = new HashMap<>(marking);
@@ -42,12 +42,12 @@ public class Transition<T> {
       Integer tokens = newMarking.get(arc.getKey());
 
       if(tokens == null) {
-        throw new TransitionNotEnabledException(this.toString());
+        return null;
       }
 
       int newTokens = tokens - arc.getValue();
       if(newTokens < 0) {
-        throw new TransitionNotEnabledException(this.toString());
+        return null;
       }
 
       if(newTokens == 0) {
